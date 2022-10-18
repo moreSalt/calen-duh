@@ -32,44 +32,7 @@
     ];
 
     // EVENTS ARR
-    let events = [
-        // {
-        //     id: crypto.randomUUID(),
-        //     name: "Example",
-        //     start: "2022-10-02T19:00",
-        //     end: "", //2022-10-11T19:00"
-        //     color: "primary",
-        //     location: "Campus",
-        //     details: "This is an example",
-        // },
-        // {
-        //     id: crypto.randomUUID(),
-        //     name: "Example1",
-        //     start: "2022-10-02T19:00",
-        //     end: "", //2022-10-11T19:00"
-        //     color: "primary",
-        //     location: "Campus",
-        //     details: "This is an example",
-        // },
-        // {
-        //     id: crypto.randomUUID(),
-        //     name: "Example",
-        //     start: "2022-10-02T19:00",
-        //     end: "", //2022-10-11T19:00"
-        //     color: "primary",
-        //     location: "Campus",
-        //     details: "This is an example",
-        // },
-        // {
-        //     id: crypto.randomUUID(),
-        //     name: "Example",
-        //     start: "2022-10-02T19:00",
-        //     end: "", //2022-10-11T19:00"
-        //     color: "primary",
-        //     location: "Campus",
-        //     details: "This is an example",
-        // },
-    ];
+    let events = [];
 
     let devDays = [];
 
@@ -150,15 +113,32 @@
     let eventForm = new EventForm();
 
     // Validation before creatng/updating
-    async function save(updateSide = false) {
-        if (eventForm.name && eventForm.start) {
-            const copy = {...eventForm};
-            copy.start+=":00.000"
-            copy.end = copy.end ? copy.end+=":00.000" : copy.end;
+    async function save() {
 
-            await add(copy);
+        if (eventForm.name && eventForm.start) {
+            const ev = {...eventForm};
+            ev.start+=":00.000"
+
+            await console.log(ev)
+            // end time before start time logic
+            if (ev.end) {
+                ev.end+=":00.000"
+
+                const st = new Date(ev.start+"Z");
+                const en = new Date(ev.end+"Z");
+                await console.log(st.getTime(), en.getTime())
+                if (st.getTime() >= en.getTime()) {
+                    return;
+                }
+            } 
+            // ev.end = ev.end ? ev.end+=":00.000" : ev.end;
+
+            await add(ev);
             await fetchDB();
-            await updateDate()
+            await updateDate();
+            document.getElementById('my-modal-4').checked = false;
+            currentSidebar = {...eventForm}
+
         } else {
             console.log("missing name or start")
         }
