@@ -21,7 +21,7 @@
   }
 
   onMount(async () => {
-    await console.log(user)
+    // await console.log(user)
     user.subscribe(value => {
       // console.log(value)
       username = value.email

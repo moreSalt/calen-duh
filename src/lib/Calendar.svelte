@@ -1,7 +1,8 @@
 <script>
     import Nav from '$lib/Nav.svelte';
-
+    import { supabase } from '$lib/supabaseClient'
     import c from "calendar";
+	import { onMount } from 'svelte';
 
     // DAYS NAME ARR
     const days = [
@@ -32,58 +33,54 @@
 
     // EVENTS ARR
     let events = [
-        {
-            id: crypto.randomUUID(),
-            name: "Example",
-            start: "2022-10-02T19:00",
-            end: "", //2022-10-11T19:00"
-            color: "primary",
-            location: "Campus",
-            details: "This is an example",
-        },
-        {
-            id: crypto.randomUUID(),
-            name: "Example1",
-            start: "2022-10-02T19:00",
-            end: "", //2022-10-11T19:00"
-            color: "primary",
-            location: "Campus",
-            details: "This is an example",
-        },
-        {
-            id: crypto.randomUUID(),
-            name: "Example",
-            start: "2022-10-02T19:00",
-            end: "", //2022-10-11T19:00"
-            color: "primary",
-            location: "Campus",
-            details: "This is an example",
-        },
-        {
-            id: crypto.randomUUID(),
-            name: "Example",
-            start: "2022-10-02T19:00",
-            end: "", //2022-10-11T19:00"
-            color: "primary",
-            location: "Campus",
-            details: "This is an example",
-        },
+        // {
+        //     id: crypto.randomUUID(),
+        //     name: "Example",
+        //     start: "2022-10-02T19:00",
+        //     end: "", //2022-10-11T19:00"
+        //     color: "primary",
+        //     location: "Campus",
+        //     details: "This is an example",
+        // },
+        // {
+        //     id: crypto.randomUUID(),
+        //     name: "Example1",
+        //     start: "2022-10-02T19:00",
+        //     end: "", //2022-10-11T19:00"
+        //     color: "primary",
+        //     location: "Campus",
+        //     details: "This is an example",
+        // },
+        // {
+        //     id: crypto.randomUUID(),
+        //     name: "Example",
+        //     start: "2022-10-02T19:00",
+        //     end: "", //2022-10-11T19:00"
+        //     color: "primary",
+        //     location: "Campus",
+        //     details: "This is an example",
+        // },
+        // {
+        //     id: crypto.randomUUID(),
+        //     name: "Example",
+        //     start: "2022-10-02T19:00",
+        //     end: "", //2022-10-11T19:00"
+        //     color: "primary",
+        //     location: "Campus",
+        //     details: "This is an example",
+        // },
     ];
 
     let devDays = [];
+
+    // Get current month and date
     let currentY = `${new Date().getUTCFullYear()}`;
     let currentM = `${new Date().getMonth()}`;
-    let currentD = {
-        day: "01",
-        month: "1",
-        year: 2022,
-        events: []
-    }
     // Current calendar page
     let currentPage = [];
-
+    
+    // Update the calendarPage
     function updateDate() {
-        // console.log(currentY, currentM);
         const cal = new c.Calendar(); // weeks start on Sunday by default
         const m = cal.monthDates(
             parseInt(currentY),
@@ -102,18 +99,22 @@
         }
         devDays = [...tempDates];
         let index = 0;
+
+
         currentPage = tempDates.map((i) => {
             const obj = {
                 // WHY DAY NEEDS THAT TRIM IDK
                 day: i < 10 ? `0` + `${i}`.trim() : `${i}`,
-                month:
-                    i > 20 && index < 10
-                        ? tempMonth
-                        : i < 10 && index > 20
-                        ? tempMonth + 2
-                        : tempMonth + 1,
                 year: parseInt(currentY),
             };
+            
+            // Month logic
+            const month = i > 20 && index < 10
+                ? tempMonth : i < 10 && index > 20
+                ? tempMonth + 2
+                : tempMonth + 1;
+            obj.month = parseInt(month) < 10 ? `0${month}` : `${month}`;
+
             obj.events = events.filter((e) =>
                 e.start.includes(`${obj.year}-${obj.month}-${obj.day}T`)
             );
@@ -122,8 +123,6 @@
         });
 
     }
-    updateDate();
-    // console.log(getDatesInRange(d1, d2));
 
 
 
@@ -137,7 +136,8 @@
     // Event form class, why i didnt do a func idk
     class EventForm {
         constructor() {
-            this.id = crypto.randomUUID();
+            // this.id = crypto.randomUUID();
+            this.id = -1;
             this.name = "";
             this.start = "";
             this.end = ""; //2022-10-11T19:00"
@@ -149,16 +149,91 @@
 
     let eventForm = new EventForm();
 
-    // Validation and saving eventForm
+    // Validation before creatng/updating
     async function save(updateSide = false) {
-        if (eventForm.id.length > 12 && eventForm.name && eventForm.start) {
-            const index = events.findIndex((i) => i.id === eventForm.id);
-            // console.log(index);
-            if (index === -1) {
-                events.push(eventForm);
-            } else {
-                events[index] = eventForm;
+        if (eventForm.name && eventForm.start) {
+            const copy = {...eventForm};
+            copy.start+=":00.000"
+            copy.end = copy.end ? copy.end+=":00.000" : copy.end;
+
+            await add(copy);
+            await fetchDB();
+            await updateDate()
+        } else {
+            console.log("missing name or start")
+        }
+    }
+
+    // Duplicate an event
+    async function dup() {
+        try {
+            const temp = { ...currentSidebar };
+            temp.name += " (copy)";
+            delete temp.id
+            eventForm = temp;
+            const { error } = await supabase
+                .from('events')
+                .insert(temp)
+            
+            if (error) {
+                throw error
             }
+
+            await fetchDB()
+            await updateDate()
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
+    // Delete an event
+    async function del() {
+        try {
+            const { error } = await supabase
+                .from('events')
+                .delete()
+                .eq('id', currentSidebar.id)
+
+            // Fetch db
+            await fetchDB()
+            // Update current month
+            await updateDate()
+            // Reset event form
+            eventForm = new EventForm();
+        } catch (error) {
+            console.error(error)
+        }
+    }
+
+    // SIDEBAR
+    let currentSidebar = {
+        // id: 0,
+        name: "",
+        start: "",
+        end: "", //2022-10-11T19:00"
+        color: "primary",
+        location: "",
+        details: "",
+    };
+
+    // Fetch DB
+    async function fetchDB() {
+        try {
+            // const { data, error } = await supabase.from('events').select().gte('start', '2000-01-01T00:00:00').lte('start', '2023-01-01T00:00:00');
+            const { data, error } = await supabase
+                .from('events')
+                .select()
+                .gte('start', `${currentPage[0].year}-${currentPage[0].month}-${currentPage[0].day}T00:00:00`)
+                .lte('start', `${currentPage[currentPage.length-1].year}-${currentPage[currentPage.length-1].month}-${currentPage[currentPage.length-1].day}T23:59:59`);
+            // const { data, error } = await supabase.from('events').select().gte('start', `${currentY}-${currentM < 10 ? "0" + currentM : currentM}-`).lte('start', '2023-01-01T00:00:00');
+            if (error) {
+                throw error;
+            }
+            events = [...data].map(e => {
+                e.start = e.start.split(':').length > 1 ? e.start.split(':').slice(0,2).join(':') : e.start
+                e.end = e.end && e.end.split(':').length > 1 ? e.end.split(':').slice(0,2).join(':') : e.end
+                return e;
+            });
             events.sort((a, b) => {
                 let fa = a.start,
                     fb = b.start;
@@ -171,65 +246,41 @@
                 }
                 return 0;
             });
-
-            // Svelte update
-            events = [...events];
-
-            // Update current month
-            updateDate()
-
-
-            currentSidebar = eventForm;
-            // Reset event form
-            eventForm = new EventForm();
-
-            // await console.log(events);
-
-            // Hide modal
-            // @ts-ignore
-            document.querySelector("#my-modal-4").checked = false;
-        } else {
-            // toast
+        } catch (error) {
+            console.error("error fetch calendar db", error)
         }
     }
 
-    function dup() {
-        const temp = { ...currentSidebar };
-        temp.name += " (copy)";
-        temp.id = crypto.randomUUID();
-        eventForm = temp;
-        // console.log(temp.id);
-        save();
-        updateDate()
-    }
-
-    function del() {
-        const index = events.findIndex((e) => e.id === currentSidebar.id);
-        if (index >= 0) {
-            events.splice(index, 1);
-            events = [...events];
-
-            // // Update current month
-            updateDate()
-
-            // Reset event form
-            eventForm = new EventForm();
-        } else {
-            // console.log(index);
+    // Add or edit db
+    async function add (event) {
+        try {
+            // 3AM LOGIC BABY
+            const id = event.id;
+            if (id < 0) {
+                delete event.id;
+            }
+            // event = Object.keys(event).filter(e => event[e])
+            const keys = Object.keys(event)
+            for (let i = 0; i < keys.length; i++) {
+                if (!event[keys[i]]) {
+                    delete event[keys[i]]
+                }
+            }
+            const { error } = id >= 0 ? await supabase.from('events').update(event).eq('id', event.id) : await supabase.from('events').insert(event)
+            if (error) throw error;
+            return true;
+        } catch (error) {
+            console.error(error)
+            return false
         }
     }
 
-    // SIDEBAR
+    onMount(async () => {
+        await updateDate();
 
-    let currentSidebar = {
-        id: "",
-        name: "",
-        start: "",
-        end: "", //2022-10-11T19:00"
-        color: "primary",
-        location: "",
-        details: "",
-    };
+        await fetchDB()
+        await updateDate();
+    })
 </script>
 
 <div class="drawer drawer-end">
@@ -248,7 +299,11 @@
                 <select
                     class="select select-bordered select-sm w-xs"
                     bind:value={currentM}
-                    on:change={updateDate}
+                    on:change={async () => {
+                        await updateDate()
+                        await fetchDB()
+                        await updateDate()
+                    }}
                 >
                     <option value="0">January</option><option value="1"
                         >February</option
@@ -268,7 +323,12 @@
                 <select
                     class="select select-bordered select-sm w-xs"
                     bind:value={currentY}
-                    on:change={updateDate}
+                    on:change={async () => {
+                        await updateDate()
+
+                        await fetchDB()
+                        await updateDate()
+                    }}
                 >
                     <option value="2020">2020</option><option value="2021"
                         >2021</option
@@ -312,8 +372,8 @@
                             {#each date.events as event, j}
                             <!-- svelte-ignore a11y-click-events-have-key-events -->
                             <!-- LEAVING IN AS WILL BE CHANGING THIS -->
-                            <!-- {#if j < 888} -->
-                            {#if j < 2}
+                            <!-- {#if j < 2} -->
+                            {#if true}
                                 <label
                                     class="
                                 gap-2
@@ -359,7 +419,7 @@
                                     {event.name}
                                 </label>
                             {:else if j == 2}
-                                <label
+                                <div
                                     class="
                                     gap-2
                                     text-md
@@ -374,11 +434,9 @@
                                     h-fit
                                     hover:pl-2
                                     "
-                                    for="my-modal-5"
-                                    on:click={() => { currentD = date }}
                                 >
                                     + {date.events.length - 2} more
-                                </label>
+                            </div>
 
                             {/if}
                         {/each}
@@ -701,21 +759,6 @@
                     eventForm = new EventForm();
                 }}>Reset</button
             >
-        </div>
-    </label>
-</label>
-
-<!-- MODAL DAY -->
-<input type="checkbox" id="my-modal-5" class="modal-toggle" />
-<label for="my-modal-5" class="modal cursor-pointer">
-    <label
-        class="modal-box modal-bottom sm:modal-middle relative w-11/12 max-w-4xl h-2/3"
-        for=""
-    >
-        <!-- CONTENT HERE -->
-        <div class="flex flex-col gap-4">
-            <h3>{currentD.day}</h3>
-            <!-- {JSON.stringify(currentD)} -->
         </div>
     </label>
 </label>
