@@ -1,38 +1,14 @@
-# create-svelte
+# Calenduh
 
-Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/master/packages/create-svelte).
+*A calendar duh*
 
-## Creating a project
+https://calen-duh.vercel.app
 
-If you're seeing this, you've probably already done this step. Congrats!
+I really just wanted to try Supabase out, so I made this calendar.
 
-```bash
-# create a new project in the current directory
-npm create svelte@latest
-
-# create a new project in my-app
-npm create svelte@latest my-app
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```bash
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```bash
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
+## Install
+*Requires Supabase, but it would not be hard to change to anything else*
+1. Clone repo `git clone git@github.com:moreSalt/calen-duh.git`
+2. `cd ./supa-calenduh`
+3. Install dependencies `npm install`
+4. Set .env vars `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
