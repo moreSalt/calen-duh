@@ -592,7 +592,11 @@
 </div>
 
 <!-- MODAL FORM -->
-<input type="checkbox" id="my-modal-4" class="modal-toggle" />
+<input type="checkbox" id="my-modal-4" class="modal-toggle" on:click={() => {
+    if (!document.getElementById('my-modal-4').checked) {
+        eventForm = new EventForm();
+    }
+}}/>
 <label for="my-modal-4" class="modal cursor-pointer">
     <label
         class="modal-box modal-bottom sm:modal-middle relative w-11/12 max-w-2xl"
@@ -736,7 +740,9 @@
             <button
                 class="btn btn-error btn-outline"
                 on:click={() => {
+                    const id = eventForm.id
                     eventForm = new EventForm();
+                    eventForm.id = id;
                 }}>Reset</button
             >
         </div>
